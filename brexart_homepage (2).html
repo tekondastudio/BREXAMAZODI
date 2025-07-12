@@ -1,0 +1,158 @@
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth-compat.js"></script>
+<script src="https://www.gsfunction handleUpload() {
+  const file = document.getElementById('fileInput').files[0];
+  const title = document.getElementById('uploadTitle').value;
+  const desc = document.getElementById('uploadDesc').value;
+
+  if (!file || !title || !desc) {
+    alert('Please fill all fields and choose a file.');
+    return;
+  }
+
+  const isImage = file.type.startsWith('image/');
+  const postRef = db.collection('posts').doc();
+
+  if (isImage) {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const img = new Image();
+      img.onload = function () {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        ctx.font = '40px Arial';
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillText('BREX-ART-Innovations', 20, img.height - 40);
+        canvas.toBlob(blob => uploadFile(blob, postRef, file.name, title, desc, 'image'));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  } else {
+    uploadFile(file, postRef, file.name, title, desc, 'video');
+  }
+}
+
+function uploadFile(fileData, ref, filename, title, desc, type) {
+  const storageRef = firebase.storage().ref().child('uploads/' + ref.id + '_' + filename);
+  storageRef.put(fileData).then(snapshot => {
+    snapshot.ref.getDownloadURL().then(url => {
+      ref.set({
+        title,
+        desc,
+        type,
+        url,
+        createdAt: new Date(),
+        user: userEmail
+      }).then(() => {
+        document.getElementById('uploadStatus').textContent = '✅ Upload successful!';
+        document.getElementById('fileInput').value = '';
+        document.getElementById('uploadTitle').value = '';
+        document.getElementById('uploadDesc').value = '';
+      });
+    });
+  }).catch(err => {
+    console.error('Upload error:', err);
+    document.getElementById('uploadStatus').textContent = '❌ Upload failed.';
+  });
+}
+tatic.com/firebasejs/10.5.0/firebase-firestore-compat.js"></script>
+
+<script>
+  // Firebase Config (replace with your real config)
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  // Login with Google
+  auth.onAuthStateChanged(user => {
+    if (!user) {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider);
+    } else {
+      loadDashboard(user);
+    }
+  });
+
+  // Protect dashboard visibility
+  function loadDashboard(user) {
+    document.querySelector('.post').style.display = 'block';
+    db.collection('stats').doc('summary').get().then(doc => {
+      const data = doc.data();
+      document.getElementById('userCount').textContent = data.users;
+      document.getElementById('totalViews').textContent = data.views;
+      document.getElementById('topRated').textContent = data.topRatedPost;
+      document.getElementById('topCountry').textContent = data.topCountry;
+      document.getElementById('topAge').textContent = data.topAgeGroup;
+      document.getElementById('totalDownloads').textContent = data.totalDownloads;
+
+      new Chart(document.getElementById('viewsChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: data.viewsByDay.labels,
+          datasets: [{
+            label: 'Views per Day',
+            data: data.viewsByDay.data,
+            backgroundColor: '#00bcd4'
+          }]
+        },
+        options: {
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    });
+  }
+
+  // Hide dashboard initially
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelector('.post').style.display = 'none';
+  });
+
+  // Export as CSV
+  function exportDashboardReport() {
+    const content = `Category,Value\n` +
+      `Total Users,${document.getElementById('userCount').textContent}\n` +
+      `Total Views,${document.getElementById('totalViews').textContent}\n` +
+      `Top Rated Post,${document.getElementById('topRated').textContent}\n` +
+      `Top Country,${document.getElementById('topCountry').textContent}\n` +
+      `Top Age Group,${document.getElementById('topAge').textContent}\n` +
+      `Paid Downloads,${document.getElementById('totalDownloads').textContent}`;
+
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'brexart_dashboard_report.csv';
+    link.click();
+  }
+</script>
+
+<!-- Admin Dashboard UI added below -->
+<div class="post" style="background: var(--comment-bg); display: none;">
+  <h2>📊 Admin Dashboard</h2>
+  <p>Track your platform's growth and usage:</p>
+  <ul style="list-style:none; padding: 0; font-size: 16px;">
+    <li><strong>👥 Total Users:</strong> <span id="userCount">Loading...</span></li>
+    <li><strong>📈 Total Views:</strong> <span id="totalViews">Loading...</span></li>
+    <li><strong>⭐ Most Rated Post:</strong> <span id="topRated">Loading...</span></li>
+    <li><strong>🌍 Top Country:</strong> <span id="topCountry">Loading...</span></li>
+    <li><strong>👶 Top Age Group:</strong> <span id="topAge">Loading...</span></li>
+    <li><strong>💵 Total Downloads (Paid):</strong> <span id="totalDownloads">Loading...</span></li>
+  </ul>
+  <button onclick="exportDashboardReport()" style="margin-top: 15px; background: var(--button-bg); color: var(--button-text); padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer;">📥 Export Report</button>
+  <canvas id="viewsChart" width="400" height="200"></canvas>
+</div>
+<!-- END Admin Dashboard UI -->
